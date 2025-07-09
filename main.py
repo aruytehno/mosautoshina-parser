@@ -2,12 +2,11 @@ import requests
 from bs4 import BeautifulSoup
 import csv
 
-URL = "https://mosautoshina.ru/catalog/tyre/search/by-size/-195-75-16------1-----/"
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
 }
 
-def parse_page(url):
+def parse_mosautoshina(url):
     response = requests.get(url, headers=HEADERS)
     soup = BeautifulSoup(response.text, "html.parser")
 
@@ -145,7 +144,7 @@ def save_to_html(data, filename="tyres.html"):
 
 # И вызываем экспорт в main:
 if __name__ == "__main__":
-    tyres = parse_page(URL)
+    tyres = parse_mosautoshina("https://mosautoshina.ru/catalog/tyre/search/by-size/-195-75-16------1-----/")
     save_to_csv(tyres)
     save_to_html(tyres)
     print(f"Сохранено {len(tyres)} шин в файлы: tyres.csv и tyres.html")
