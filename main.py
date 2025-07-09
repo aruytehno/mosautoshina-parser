@@ -5,10 +5,12 @@ import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+from selenium.webdriver.common.action_chains import ActionChains
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
@@ -94,19 +96,26 @@ def parse_spbkoleso(url):
     print("[spbkoleso] Контейнер загружен.")
 
     # --- НАЧАЛО БЛОКА СКРОЛЛИНГА ПО КОНТЕЙНЕРУ ---
-    scroll_pause = 1.2
+    from selenium.webdriver.common.action_chains import ActionChains
+    from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
+
+    # Инициализация ActionChains один раз
+    actions = ActionChains(driver)
+
+    scroll_pause = 2.0
     same_count_times = 0
     max_same_count_times = 10
     last_count = 0
 
-    scroll_height = driver.execute_script("return arguments[0].scrollHeight", container)
-    scroll_top = 0
-    scroll_step = 300
-
     while same_count_times < max_same_count_times:
-        scroll_top += scroll_step
-        driver.execute_script("arguments[0].scrollTop = arguments[1];", container, scroll_top)
-        print(f"[scroll] Прокручено до позиции: {scroll_top}")
+        # Перед каждым скроллом — перемещаем курсор в контейнер
+        actions.move_to_element(container).perform()
+
+        # Скроллим колесиком вниз на 300px, начиная с контейнера
+        origin = ScrollOrigin.from_element(container)
+        actions.scroll_from_origin(origin, 0, 300).perform()
+
+        print("[scroll] Скролл колесиком выполнен на 300px")
 
         time.sleep(scroll_pause)
 
@@ -122,15 +131,6 @@ def parse_spbkoleso(url):
             same_count_times += 1
             print(f"[scroll] Новых товаров нет. Попытка {same_count_times}/{max_same_count_times}")
 
-        new_scroll_height = driver.execute_script("return arguments[0].scrollHeight", container)
-        print(f"[scroll] Высота контейнера: {new_scroll_height}, была: {scroll_height}")
-
-        if new_scroll_height > scroll_height:
-            scroll_height = new_scroll_height
-
-        if scroll_top >= scroll_height:
-            print("[scroll] Достигнут конец контейнера.")
-            break
     # --- КОНЕЦ БЛОКА СКРОЛЛИНГА ---
 
     html = driver.page_source
