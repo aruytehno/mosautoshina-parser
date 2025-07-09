@@ -73,18 +73,18 @@ def save_to_html(data, filename="tyres.html"):
 <head>
     <meta charset="UTF-8">
     <title>Каталог шин</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
     <style>
-        body { font-family: Arial, sans-serif; }
-        table { border-collapse: collapse; width: 100%; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
-        th { background-color: #f0f0f0; }
-        img { max-height: 100px; }
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 8px; border: 1px solid #ccc; text-align: left; vertical-align: top; }
+        img { max-height: 80px; }
         a.button { text-decoration: none; color: white; background: #2a9fd6; padding: 4px 8px; border-radius: 4px; }
     </style>
 </head>
 <body>
     <h2>Каталог шин по размеру 195/75 R16</h2>
-    <table>
+    <table id="tyreTable">
         <thead>
             <tr>
                 <th>Изображение</th>
@@ -102,7 +102,7 @@ def save_to_html(data, filename="tyres.html"):
             <tr>
                 <td><img src="{tyre['Изображение']}" alt="img"></td>
                 <td>{tyre['Название']}</td>
-                <td>{tyre['Цена (₽)']}</td>
+                <td>{tyre['Цена (₽)'].replace(" ", "")}</td>
                 <td>{tyre['Сезон']}</td>
                 <td>{tyre['Страна']}</td>
                 <td><a href="{tyre['Ссылка']}" target="_blank" class="button">Перейти</a></td>
@@ -111,6 +111,33 @@ def save_to_html(data, filename="tyres.html"):
         f.write("""
         </tbody>
     </table>
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#tyreTable').DataTable({
+                "order": [[2, "asc"]],
+                "language": {
+                    "search": "Поиск:",
+                    "lengthMenu": "Показать _MENU_ записей на странице",
+                    "zeroRecords": "Ничего не найдено",
+                    "info": "Показано с _START_ по _END_ из _TOTAL_ записей",
+                    "infoEmpty": "Нет доступных записей",
+                    "infoFiltered": "(отфильтровано из _MAX_ записей)",
+                    "paginate": {
+                        "first": "Первая",
+                        "last": "Последняя",
+                        "next": "Следующая",
+                        "previous": "Предыдущая"
+                    }
+                },
+                "columnDefs": [
+                    { "type": "num", "targets": 2 }  // Цена как число
+                ]
+            });
+        });
+    </script>
 </body>
 </html>
 """)
