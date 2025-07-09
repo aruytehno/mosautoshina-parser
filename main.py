@@ -103,7 +103,7 @@ def parse_spbkoleso(url):
     actions = ActionChains(driver)
     origin = ScrollOrigin.from_element(container)
 
-    scroll_pause = 2.0
+    scroll_pause = 1.0
     same_count_times = 0
     max_same_count_times = 10
     last_count = 0
@@ -112,15 +112,15 @@ def parse_spbkoleso(url):
 
     while same_count_times < max_same_count_times and scrolls_done < max_total_scrolls:
         actions.move_to_element(container).perform()
-        actions.scroll_from_origin(origin, 0, 300).perform()
-        print("[scroll] Скролл колесиком выполнен на 300px")
+        actions.scroll_from_origin(origin, 0, 500).perform()
+        print("[scroll] Скролл колесиком выполнен на 500px")
         scrolls_done += 1
 
         time.sleep(scroll_pause)
 
         # Ожидаем либо новых товаров, либо таймаут
         try:
-            WebDriverWait(driver, 5).until(
+            WebDriverWait(driver, 2).until(
                 lambda d: len(d.find_elements(By.CLASS_NAME, "digi-product")) > last_count
             )
         except Exception:
