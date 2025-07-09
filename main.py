@@ -1,6 +1,7 @@
 import requests
 import csv
 import os
+import time
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -81,15 +82,25 @@ def parse_spbkoleso(url):
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("user-agent=Mozilla/5.0")
 
-    # Путь к chromedriver.exe рядом с текущим скриптом
-    driver_path = os.path.join(os.path.dirname(__file__), "chromedriver.exe")
+    driver_path = os.path.join(os.getcwd(), "chromedriver.exe")
     service = Service(driver_path)
 
     # Запуск браузера
     driver = webdriver.Chrome(service=service, options=chrome_options)
+
     driver.get(url)
 
-    # Ждём, пока появятся карточки товаров
+    SCROLL_PAUSE_TIME = 1.0
+    last_height = driver.execute_script("return document.body.scrollHeight")
+
+    while True:
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(SCROLL_PAUSE_TIME)
+        new_height = driver.execute_script("return document.body.scrollHeight")
+        if new_height == last_height:
+            break
+        last_height = new_height
+
     try:
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.CLASS_NAME, "digi-product"))
