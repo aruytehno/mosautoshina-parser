@@ -3,8 +3,8 @@ import csv
 import os
 import time
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -74,9 +74,8 @@ def parse_spbkoleso(url):
     print(f"[spbkoleso] Начинается парсинг: {url}")
     tyres = []
 
-    # Настройка headless Chrome
     chrome_options = Options()
-    chrome_options.add_argument("--headless=new")
+    # chrome_options.add_argument("--headless=new")  # Можно раскомментировать для отладки
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
@@ -84,41 +83,64 @@ def parse_spbkoleso(url):
 
     driver_path = os.path.join(os.getcwd(), "chromedriver.exe")
     service = Service(driver_path)
-
-    # Запуск браузера
     driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver.set_window_size(1280, 1024)
     driver.get(url)
 
-    SCROLL_PAUSE_TIME = 1.0
-    scroll_steps = 20
-    scroll_increment = 1000  # пикселей
+    wait = WebDriverWait(driver, 10)
 
-    for step in range(scroll_steps):
-        driver.execute_script(f"window.scrollBy(0, {scroll_increment});")
-        time.sleep(SCROLL_PAUSE_TIME)
+    print("[spbkoleso] Ожидание контейнера с карточками...")
+    container = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "digi-products-grid")))
+    print("[spbkoleso] Контейнер загружен.")
 
-        # Подсчёт количества загруженных товаров
-        items_count = len(driver.find_elements(By.CLASS_NAME, "digi-product"))
-        print(f"Загружено товаров: {items_count}")
+    # --- НАЧАЛО БЛОКА СКРОЛЛИНГА ПО КОНТЕЙНЕРУ ---
+    scroll_pause = 1.2
+    same_count_times = 0
+    max_same_count_times = 10
+    last_count = 0
 
-    try:
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "digi-product"))
-        )
-    except:
-        print("⚠️ Карточки не загрузились.")
-        driver.quit()
-        return tyres
+    scroll_height = driver.execute_script("return arguments[0].scrollHeight", container)
+    scroll_top = 0
+    scroll_step = 300
 
-    # Получаем HTML и парсим через BeautifulSoup
+    while same_count_times < max_same_count_times:
+        scroll_top += scroll_step
+        driver.execute_script("arguments[0].scrollTop = arguments[1];", container, scroll_top)
+        print(f"[scroll] Прокручено до позиции: {scroll_top}")
+
+        time.sleep(scroll_pause)
+
+        products = driver.find_elements(By.CLASS_NAME, "digi-product")
+        current_count = len(products)
+        print(f"[scroll] Обнаружено товаров: {current_count}")
+
+        if current_count > last_count:
+            print(f"[scroll] Новые товары подгружены: {current_count - last_count}")
+            last_count = current_count
+            same_count_times = 0
+        else:
+            same_count_times += 1
+            print(f"[scroll] Новых товаров нет. Попытка {same_count_times}/{max_same_count_times}")
+
+        new_scroll_height = driver.execute_script("return arguments[0].scrollHeight", container)
+        print(f"[scroll] Высота контейнера: {new_scroll_height}, была: {scroll_height}")
+
+        if new_scroll_height > scroll_height:
+            scroll_height = new_scroll_height
+
+        if scroll_top >= scroll_height:
+            print("[scroll] Достигнут конец контейнера.")
+            break
+    # --- КОНЕЦ БЛОКА СКРОЛЛИНГА ---
+
     html = driver.page_source
     driver.quit()
+
     soup = BeautifulSoup(html, "html.parser")
-
     items = soup.select("div.digi-product")
-    print(f"Всего найдено товаров: {len(items)}")
+    print(f"[spbkoleso] Всего найдено товаров: {len(items)}")
 
-    for item in items:
+    for index, item in enumerate(items):
         link_tag = item.select_one("a[href*='/shini/']")
         relative_link = link_tag['href'] if link_tag else ""
         full_link = "https://spbkoleso.ru" + relative_link if relative_link else ""
@@ -145,7 +167,11 @@ def parse_spbkoleso(url):
             "Источник": "spbkoleso.ru"
         })
 
+        print(f"[spbkoleso] Товар {index + 1}: {name}, Цена: {price}, Ссылка: {full_link}")
+
+    print(f"[spbkoleso] Парсинг завершен. Найдено {len(tyres)} товаров.")
     return tyres
+
 
 
 
