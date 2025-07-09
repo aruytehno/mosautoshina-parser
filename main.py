@@ -12,8 +12,7 @@ def parse_mosautoshina(url):
 
     tyres = []
     items = soup.select("li.product.item")
-
-    print(f"Найдено товаров: {len(items)}")
+    print(f"[mosautoshina] Найдено товаров: {len(items)}")
 
     for item in items:
         name_tag = item.select_one(".product-name")
@@ -33,11 +32,12 @@ def parse_mosautoshina(url):
 
         season_icon = item.select_one(".badge-season")
         if season_icon:
-            if "icon-summer" in season_icon["class"]:
+            classes = season_icon.get("class", [])
+            if "icon-summer" in classes:
                 season = "Лето"
-            elif "icon-winter" in season_icon["class"]:
+            elif "icon-winter" in classes:
                 season = "Зима"
-            elif "icon-all-season" in season_icon["class"]:
+            elif "icon-all-season" in classes:
                 season = "Всесезон"
             else:
                 season = "Неизвестно"
@@ -50,10 +50,55 @@ def parse_mosautoshina(url):
             "Сезон": season,
             "Страна": country,
             "Изображение": image_url,
-            "Ссылка": link
+            "Ссылка": link,
+            "Источник": "mosautoshina.ru"
         })
 
     return tyres
+
+def parse_spbkoleso(url):
+    response = requests.get(url, headers=HEADERS)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    print(f"[spbkoleso] Парсинг: {url}")
+    tyres = []
+
+    items = soup.select("div.digi-product")
+    print(f"Найдено товаров: {len(items)}")
+
+    for item in items:
+        link_tag = item.select_one("a[href*='/shini/']")
+        relative_link = link_tag['href'] if link_tag else ""
+        full_link = "https://spbkoleso.ru" + relative_link if relative_link else ""
+
+        brand = item.select_one(".digi-product__brand")
+        model = item.select_one(".digi-product__label")
+        name = f"{brand.text.strip()} {model.text.strip()}" if brand and model else "Нет названия"
+
+        price_tag = item.select_one(".digi-product-price-variant_actual")
+        price = price_tag.text.strip().replace("\xa0", "").replace("₽", "").replace(" ", "") if price_tag else "Нет цены"
+
+        image_tag = item.select_one("img.digi-product__image")
+        image_url = image_tag["src"] if image_tag else ""
+        if image_url and image_url.startswith("//"):
+            image_url = "https:" + image_url
+
+        # Сезонность можно извлечь по иконке — пока оставим "Не указано"
+        season = "Не указано"
+        country = "Не указано"
+
+        tyres.append({
+            "Название": name,
+            "Цена (₽)": price,
+            "Сезон": season,
+            "Страна": country,
+            "Изображение": image_url,
+            "Ссылка": full_link,
+            "Источник": "spbkoleso.ru"
+        })
+
+    return tyres
+
 
 def save_to_csv(data, filename="tyres.csv"):
     if not data:
@@ -91,6 +136,7 @@ def save_to_html(data, filename="tyres.html"):
                 <th>Цена (₽)</th>
                 <th>Сезон</th>
                 <th>Страна</th>
+                <th>Источник</th>
                 <th>Ссылка</th>
             </tr>
         </thead>
@@ -104,6 +150,7 @@ def save_to_html(data, filename="tyres.html"):
                 <td>{tyre['Цена (₽)'].replace(" ", "")}</td>
                 <td>{tyre['Сезон']}</td>
                 <td>{tyre['Страна']}</td>
+                <td>{tyre['Источник']}</td>
                 <td><a href="{tyre['Ссылка']}" target="_blank" class="button">Перейти</a></td>
             </tr>
 """)
@@ -132,7 +179,7 @@ def save_to_html(data, filename="tyres.html"):
                     }
                 },
                 "columnDefs": [
-                    { "type": "num", "targets": 2 }  // Цена как число
+                    { "type": "num", "targets": 2 }
                 ]
             });
         });
@@ -141,10 +188,19 @@ def save_to_html(data, filename="tyres.html"):
 </html>
 """)
 
+# === Точка входа ===
 
-# И вызываем экспорт в main:
 if __name__ == "__main__":
-    tyres = parse_mosautoshina("https://mosautoshina.ru/catalog/tyre/search/by-size/-195-75-16------1-----/")
-    save_to_csv(tyres)
-    save_to_html(tyres)
-    print(f"Сохранено {len(tyres)} шин в файлы: tyres.csv и tyres.html")
+    all_tyres = []
+
+    # парсинг с mosautoshina
+    all_tyres.extend(parse_mosautoshina("https://mosautoshina.ru/catalog/tyre/search/by-size/-195-75-16------1-----/"))
+
+    # парсинг с spbkoleso
+    all_tyres.extend(parse_spbkoleso("https://spbkoleso.ru/?digiSearch=true&term=195%2F75%20R16C&params=%7Csort%3DDEFAULT"))
+
+    # сохранить
+    save_to_csv(all_tyres, "tyres_summary.csv")
+    save_to_html(all_tyres, "tyres_summary.html")
+
+    print(f"\nСохранено {len(all_tyres)} шин в: tyres_summary.csv и tyres_summary.html")
