@@ -65,7 +65,60 @@ def save_to_csv(data, filename="tyres.csv"):
         writer.writeheader()
         writer.writerows(data)
 
+def save_to_html(data, filename="tyres.html"):
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write("""
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Каталог шин</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; vertical-align: top; }
+        th { background-color: #f0f0f0; }
+        img { max-height: 100px; }
+        a.button { text-decoration: none; color: white; background: #2a9fd6; padding: 4px 8px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h2>Каталог шин по размеру 195/75 R16</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Изображение</th>
+                <th>Название</th>
+                <th>Цена (₽)</th>
+                <th>Сезон</th>
+                <th>Страна</th>
+                <th>Ссылка</th>
+            </tr>
+        </thead>
+        <tbody>
+""")
+        for tyre in data:
+            f.write(f"""
+            <tr>
+                <td><img src="{tyre['Изображение']}" alt="img"></td>
+                <td>{tyre['Название']}</td>
+                <td>{tyre['Цена (₽)']}</td>
+                <td>{tyre['Сезон']}</td>
+                <td>{tyre['Страна']}</td>
+                <td><a href="{tyre['Ссылка']}" target="_blank" class="button">Перейти</a></td>
+            </tr>
+""")
+        f.write("""
+        </tbody>
+    </table>
+</body>
+</html>
+""")
+
+
+# И вызываем экспорт в main:
 if __name__ == "__main__":
     tyres = parse_page(URL)
     save_to_csv(tyres)
-    print(f"Сохранено {len(tyres)} шин в файл tyres.csv")
+    save_to_html(tyres)
+    print(f"Сохранено {len(tyres)} шин в файлы: tyres.csv и tyres.html")
