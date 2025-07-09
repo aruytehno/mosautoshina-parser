@@ -1,9 +1,22 @@
 import requests
-from bs4 import BeautifulSoup
 import csv
+import os
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from bs4 import BeautifulSoup
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "ru,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Connection": "keep-alive",
+    "Referer": "https://spbkoleso.ru/",
+    "Upgrade-Insecure-Requests": "1",
 }
 
 def parse_mosautoshina(url):
@@ -57,11 +70,39 @@ def parse_mosautoshina(url):
     return tyres
 
 def parse_spbkoleso(url):
-    response = requests.get(url, headers=HEADERS)
-    soup = BeautifulSoup(response.text, "html.parser")
-
     print(f"[spbkoleso] Парсинг: {url}")
     tyres = []
+
+    # Настройка headless Chrome
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("user-agent=Mozilla/5.0")
+
+    # Путь к chromedriver.exe рядом с текущим скриптом
+    driver_path = os.path.join(os.path.dirname(__file__), "chromedriver.exe")
+    service = Service(driver_path)
+
+    # Запуск браузера
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver.get(url)
+
+    # Ждём, пока появятся карточки товаров
+    try:
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CLASS_NAME, "digi-product"))
+        )
+    except:
+        print("⚠️ Карточки не загрузились.")
+        driver.quit()
+        return tyres
+
+    # Получаем HTML и парсим через BeautifulSoup
+    html = driver.page_source
+    driver.quit()
+    soup = BeautifulSoup(html, "html.parser")
 
     items = soup.select("div.digi-product")
     print(f"Найдено товаров: {len(items)}")
@@ -80,24 +121,21 @@ def parse_spbkoleso(url):
 
         image_tag = item.select_one("img.digi-product__image")
         image_url = image_tag["src"] if image_tag else ""
-        if image_url and image_url.startswith("//"):
+        if image_url.startswith("//"):
             image_url = "https:" + image_url
-
-        # Сезонность можно извлечь по иконке — пока оставим "Не указано"
-        season = "Не указано"
-        country = "Не указано"
 
         tyres.append({
             "Название": name,
             "Цена (₽)": price,
-            "Сезон": season,
-            "Страна": country,
+            "Сезон": "Не указано",
+            "Страна": "Не указано",
             "Изображение": image_url,
             "Ссылка": full_link,
             "Источник": "spbkoleso.ru"
         })
 
     return tyres
+
 
 
 def save_to_csv(data, filename="tyres.csv"):
@@ -194,7 +232,7 @@ if __name__ == "__main__":
     all_tyres = []
 
     # парсинг с mosautoshina
-    all_tyres.extend(parse_mosautoshina("https://mosautoshina.ru/catalog/tyre/search/by-size/-195-75-16------1-----/"))
+    # all_tyres.extend(parse_mosautoshina("https://mosautoshina.ru/catalog/tyre/search/by-size/-195-75-16------1-----/"))
 
     # парсинг с spbkoleso
     all_tyres.extend(parse_spbkoleso("https://spbkoleso.ru/?digiSearch=true&term=195%2F75%20R16C&params=%7Csort%3DDEFAULT"))
