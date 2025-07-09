@@ -71,7 +71,7 @@ def parse_mosautoshina(url):
     return tyres
 
 def parse_spbkoleso(url):
-    print(f"[spbkoleso] Парсинг: {url}")
+    print(f"[spbkoleso] Начинается парсинг: {url}")
     tyres = []
 
     # Настройка headless Chrome
@@ -87,19 +87,19 @@ def parse_spbkoleso(url):
 
     # Запуск браузера
     driver = webdriver.Chrome(service=service, options=chrome_options)
-
     driver.get(url)
 
     SCROLL_PAUSE_TIME = 1.0
-    last_height = driver.execute_script("return document.body.scrollHeight")
+    scroll_steps = 20
+    scroll_increment = 1000  # пикселей
 
-    while True:
-        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    for step in range(scroll_steps):
+        driver.execute_script(f"window.scrollBy(0, {scroll_increment});")
         time.sleep(SCROLL_PAUSE_TIME)
-        new_height = driver.execute_script("return document.body.scrollHeight")
-        if new_height == last_height:
-            break
-        last_height = new_height
+
+        # Подсчёт количества загруженных товаров
+        items_count = len(driver.find_elements(By.CLASS_NAME, "digi-product"))
+        print(f"Загружено товаров: {items_count}")
 
     try:
         WebDriverWait(driver, 10).until(
@@ -116,7 +116,7 @@ def parse_spbkoleso(url):
     soup = BeautifulSoup(html, "html.parser")
 
     items = soup.select("div.digi-product")
-    print(f"Найдено товаров: {len(items)}")
+    print(f"Всего найдено товаров: {len(items)}")
 
     for item in items:
         link_tag = item.select_one("a[href*='/shini/']")
