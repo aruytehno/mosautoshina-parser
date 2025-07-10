@@ -182,6 +182,96 @@ def parse_spbkoleso(url):
 
 
 
+def parse_yandex_prices(url):
+    print(f"[yandex] Начинается парсинг: {url}")
+    results = []
+
+    chrome_options = Options()
+    # chrome_options.add_argument("--headless=new")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("user-agent=Mozilla/5.0")
+
+    driver_path = os.path.join(os.getcwd(), "chromedriver.exe")
+    service = Service(driver_path)
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver.set_window_size(1280, 1024)
+    driver.get(url)
+
+    wait = WebDriverWait(driver, 10)
+    print("[yandex] Ожидание блока с товарами...")
+
+    container = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "EShopList")))
+    print("[yandex] Блок с товарами найден.")
+
+    # --- Скроллинг ---
+    actions = ActionChains(driver)
+    origin = ScrollOrigin.from_element(container)
+
+    scroll_pause = 1.0
+    last_count = 0
+    same_count_times = 0
+    max_same_count_times = 8
+    max_total_scrolls = 40
+    scrolls_done = 0
+
+    while same_count_times < max_same_count_times and scrolls_done < max_total_scrolls:
+        actions.move_to_element(container).perform()
+        actions.scroll_from_origin(origin, 0, 700).perform()
+        print("[scroll] Скролл колесиком выполнен на 700px")
+        scrolls_done += 1
+        time.sleep(scroll_pause)
+
+        products = driver.find_elements(By.CSS_SELECTOR, "li.EShopItem")
+        current_count = len(products)
+        print(f"[scroll] Найдено товаров: {current_count}")
+
+        if current_count > last_count:
+            same_count_times = 0
+            last_count = current_count
+        else:
+            same_count_times += 1
+            print(f"[scroll] Новых товаров нет. Попытка {same_count_times}/{max_same_count_times}")
+
+    html = driver.page_source
+    driver.quit()
+
+    soup = BeautifulSoup(html, "html.parser")
+    items = soup.select("li.EShopItem")
+    print(f"[yandex] Всего найдено карточек: {len(items)}")
+
+    for idx, item in enumerate(items):
+        name_tag = item.select_one(".EShopItem-Title")
+        price_tag = item.select_one(".EPrice-Value")
+        link_tag = item.select_one("a.Link[href]")
+
+        name = name_tag.text.strip() if name_tag else "Нет названия"
+        price = price_tag.text.strip().replace("\xa0", "") if price_tag else "Нет цены"
+        link = link_tag['href'] if link_tag else ""
+
+        shop_tag = item.select_one(".EShopName")
+        shop = shop_tag.text.strip() if shop_tag else "Неизвестный магазин"
+
+        image_tag = item.select_one("img.EThumb-Image")
+        image_url = "https:" + image_tag['src'] if image_tag and image_tag['src'].startswith("//") else ""
+
+        results.append({
+            "Название": name,
+            "Цена (₽)": price,
+            "Магазин": shop,
+            "Ссылка": link,
+            "Изображение": image_url,
+            "Источник": "yandex.ru"
+        })
+
+        print(f"[yandex] {idx + 1}. {name} — {price} ₽ — {shop} — {link}")
+
+    print(f"[yandex] Парсинг завершён. Найдено {len(results)} товаров.")
+    return results
+
+
+
 def save_to_csv(data, filename="tyres.csv"):
     if not data:
         print("Нет данных для сохранения.")
@@ -279,7 +369,10 @@ if __name__ == "__main__":
     # all_tyres.extend(parse_mosautoshina("https://mosautoshina.ru/catalog/tyre/search/by-size/-195-75-16------1-----/"))
 
     # парсинг с spbkoleso
-    all_tyres.extend(parse_spbkoleso("https://spbkoleso.ru/?digiSearch=true&term=195%2F75%20R16C&params=%7Csort%3DDEFAULT"))
+    # all_tyres.extend(parse_spbkoleso("https://spbkoleso.ru/?digiSearch=true&term=195%2F75%20R16C&params=%7Csort%3DDEFAULT"))
+
+    all_tyres.extend(parse_yandex_prices(
+        "https://yandex.ru/search?text=Кама+Евро+131+195%2F75+R16C+107R&lr=2&promo=products_mode&serp-reload-from=product-sorts&goods_how=aprice"))
 
     # сохранить
     save_to_csv(all_tyres, "tyres_summary.csv")
