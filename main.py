@@ -198,7 +198,7 @@ def parse_yandex_prices(url):
     driver = webdriver.Chrome(service=service, options=chrome_options)
     driver.set_window_size(1280, 1024)
     driver.get(url)
-
+    input("[yandex] Нажмите Enter после решения капчи...")
     wait = WebDriverWait(driver, 10)
     print("[yandex] Ожидание блока с товарами...")
 
@@ -254,7 +254,13 @@ def parse_yandex_prices(url):
         shop = shop_tag.text.strip() if shop_tag else "Неизвестный магазин"
 
         image_tag = item.select_one("img.EThumb-Image")
-        image_url = "https:" + image_tag['src'] if image_tag and image_tag['src'].startswith("//") else ""
+        image_url = ""
+        if image_tag:
+            src = image_tag.get("src", "")
+            if src.startswith("//"):
+                image_url = "https:" + src
+            elif src.startswith("http"):
+                image_url = src
 
         results.append({
             "Название": name,
@@ -262,7 +268,9 @@ def parse_yandex_prices(url):
             "Магазин": shop,
             "Ссылка": link,
             "Изображение": image_url,
-            "Источник": "yandex.ru"
+            "Источник": "yandex.ru",
+            "Сезон": "—",        # временно — или анализировать позже
+            "Страна": "—"        # добавили поле, чтобы избежать KeyError
         })
 
         print(f"[yandex] {idx + 1}. {name} — {price} ₽ — {shop} — {link}")
@@ -320,8 +328,8 @@ def save_to_html(data, filename="tyres.html"):
                 <td><img src="{tyre['Изображение']}" alt="img"></td>
                 <td>{tyre['Название']}</td>
                 <td>{tyre['Цена (₽)'].replace(" ", "")}</td>
-                <td>{tyre['Сезон']}</td>
-                <td>{tyre['Страна']}</td>
+                <td>{tyre.get('Сезон', '—')}</td>
+                <td>{tyre.get('Страна', '')}</td>
                 <td>{tyre['Источник']}</td>
                 <td><a href="{tyre['Ссылка']}" target="_blank" class="button">Перейти</a></td>
             </tr>
