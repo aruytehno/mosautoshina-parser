@@ -11,6 +11,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.action_chains import ActionChains
+from urllib.parse import urlparse
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
@@ -261,16 +262,16 @@ def parse_yandex_prices(url):
                 image_url = "https:" + src
             elif src.startswith("http"):
                 image_url = src
-
+        domain = urlparse(link).netloc
         results.append({
             "Название": name,
             "Цена (₽)": price,
             "Магазин": shop,
             "Ссылка": link,
             "Изображение": image_url,
-            "Источник": "yandex.ru",
-            "Сезон": "—",        # временно — или анализировать позже
-            "Страна": "—"        # добавили поле, чтобы избежать KeyError
+            "Источник": f'<a href="{link}" target="_blank">{domain}</a>',  # <-- вот так
+            "Сезон": "—",
+            "Страна": "—"
         })
 
         print(f"[yandex] {idx + 1}. {name} — {price} ₽ — {shop} — {link}")
