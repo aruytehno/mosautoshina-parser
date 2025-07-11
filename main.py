@@ -380,8 +380,12 @@ if __name__ == "__main__":
     # парсинг с spbkoleso
     # all_tyres.extend(parse_spbkoleso("https://spbkoleso.ru/?digiSearch=true&term=195%2F75%20R16C&params=%7Csort%3DDEFAULT"))
 
-    all_tyres.extend(parse_yandex_prices(
-        "https://yandex.ru/search?text=Кама+Евро+131+195%2F75+R16C+107R&lr=2&promo=products_mode&serp-reload-from=product-sorts&goods_how=aprice"))
+    # all_tyres.extend(parse_yandex_prices("https://yandex.ru/search?text=кама+евро+195%2F75+R16C&lr=2&promo=products_mode"))
+    # all_tyres.extend(parse_yandex_prices("https://yandex.ru/search?text=Cordiant+195%2F75+R16C&lr=2&promo=products_mode"))
+    # all_tyres.extend(parse_yandex_prices("https://yandex.ru/search?text=ikon+195+75+r16c&lr=2&promo=products_mode"))
+    # all_tyres.extend(parse_yandex_prices("https://yandex.ru/search?text=westlake+195+75+r16c&lr=2&promo=products_mode"))
+    # all_tyres.extend(parse_yandex_prices("https://yandex.ru/search?text=sailun+195+75+r16c&lr=2&promo=products_mode"))
+    all_tyres.extend(parse_yandex_prices("https://yandex.ru/search?text=шины+185+65+&lr=2&promo=products_mode"))
 
     # сохранить
     save_to_csv(all_tyres, "tyres_summary.csv")
